@@ -1,0 +1,23 @@
+{
+  "person": {
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "age": 31,
+    "phoneNumbers": [
+      {
+        "type": "home",
+        "number": "212 555-1234"
+      },
+      {
+        "type": "office",
+        "number": "646 555-4568"
+      }
+    ],
+    "address": {
+      "street": "123 Main St",
+      "city": "New York",
+      "state": "NY",
+      "postalCode": "10001"
+    }
+  }
+}
