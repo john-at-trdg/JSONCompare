@@ -1,0 +1,25 @@
+{
+  "person": {
+    "firstName": "Alice",
+    "lastName": "Smith",
+    "age": 29,
+    "email": "alice.smith@example.com",
+    "phoneNumbers": [
+      {
+        "type": "mobile",
+        "number": "555-1234"
+      },
+      {
+        "type": "work",
+        "number": "555-9999"
+      }
+    ],
+    "address": {
+      "street": "789 Pine St",
+      "city": "San Francisco",
+      "state": "CA",
+      "postalCode": "94102"
+    },
+    "hobbies": ["reading", "hiking", "cooking"]
+  }
+}
