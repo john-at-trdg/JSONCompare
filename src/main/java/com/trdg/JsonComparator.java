@@ -72,12 +72,12 @@ public class JsonComparator {
     }
 
     public static void main(String[] args) throws Exception {
-        //String json1 = new String(Files.readAllBytes(Paths.get(ClassLoader.getSystemResource("person1.json").toURI())));
-        //String json2 = new String(Files.readAllBytes(Paths.get(ClassLoader.getSystemResource("person2.json").toURI())));
+        String json1 = new String(Files.readAllBytes(Paths.get(ClassLoader.getSystemResource("person1.json").toURI())));
+        String json2 = new String(Files.readAllBytes(Paths.get(ClassLoader.getSystemResource("person2.json").toURI())));
 
 
-        String json1 = new String(Files.readAllBytes(Paths.get(ClassLoader.getSystemResource("array1.json").toURI())));
-        String json2 = new String(Files.readAllBytes(Paths.get(ClassLoader.getSystemResource("array2.json").toURI())));
+        //String json1 = new String(Files.readAllBytes(Paths.get(ClassLoader.getSystemResource("array1.json").toURI())));
+        //String json2 = new String(Files.readAllBytes(Paths.get(ClassLoader.getSystemResource("array2.json").toURI())));
 
 
 
@@ -134,13 +134,54 @@ public class JsonComparator {
                         result.put(key, valueDiff);
                     }
                 } else if (value1 instanceof JSONArray && value2 instanceof JSONArray) {
-                    // Implement your array comparison
-                    // You can also utilize a similar approach as your updated areJsonEntitiesEqual method here
+                    JSONObject arrayDiff = generateJsonArrayDiff((JSONArray) value1, (JSONArray) value2, key);
+                    if (!arrayDiff.isEmpty()) {
+                        result.put(key, arrayDiff);
+                    }
                 } else if (!value1.equals(value2)) {
                     result.put(key, String.format("Values do not match: Value 1 - %s, Value 2 - %s", value1, value2));
                 }
             }
         }
+        return result;
+    }
+
+    public static JSONObject generateJsonArrayDiff(JSONArray array1, JSONArray array2, String key) throws JSONException {
+        JSONObject result = new JSONObject();
+
+        if (array1.length() != array2.length()) {
+            result.put("length", String.format("Array lengths differ: Array 1 has %d elements, Array 2 has %d elements",
+                    array1.length(), array2.length()));
+        }
+
+        int maxLength = Math.max(array1.length(), array2.length());
+        for (int i = 0; i < maxLength; i++) {
+            String indexKey = "[" + i + "]";
+
+            if (i >= array1.length()) {
+                result.put(indexKey, String.format("Element only in second array: %s", array2.get(i).toString()));
+            } else if (i >= array2.length()) {
+                result.put(indexKey, String.format("Element only in first array: %s", array1.get(i).toString()));
+            } else {
+                Object value1 = array1.get(i);
+                Object value2 = array2.get(i);
+
+                if (value1 instanceof JSONObject && value2 instanceof JSONObject) {
+                    JSONObject valueDiff = generateJsonDiff((JSONObject) value1, (JSONObject) value2);
+                    if (!valueDiff.isEmpty()) {
+                        result.put(indexKey, valueDiff);
+                    }
+                } else if (value1 instanceof JSONArray && value2 instanceof JSONArray) {
+                    JSONObject nestedArrayDiff = generateJsonArrayDiff((JSONArray) value1, (JSONArray) value2, indexKey);
+                    if (!nestedArrayDiff.isEmpty()) {
+                        result.put(indexKey, nestedArrayDiff);
+                    }
+                } else if (!value1.equals(value2)) {
+                    result.put(indexKey, String.format("Values do not match: Value 1 - %s, Value 2 - %s", value1, value2));
+                }
+            }
+        }
+
         return result;
     }
 
@@ -206,9 +247,61 @@ public class JsonComparator {
                 Object value2 = obj2.get(key);
 
                 if ((value1 instanceof JSONObject) && (value2 instanceof JSONObject)) {
-                    diffs.put(generateJsonDiff(thisPath, (JSONObject)value1, (JSONObject)value2));
+                    JSONArray nestedDiffs = generateJsonDiff(thisPath, (JSONObject)value1, (JSONObject)value2);
+                    for (int i = 0; i < nestedDiffs.length(); i++) {
+                        diffs.put(nestedDiffs.get(i));
+                    }
                 } else if ((value1 instanceof JSONArray) && (value2 instanceof JSONArray)) {
-                    //Not handling array differences in this example
+                    JSONArray arrayDiffs = generateJsonArrayDiff(thisPath, (JSONArray)value1, (JSONArray)value2);
+                    for (int i = 0; i < arrayDiffs.length(); i++) {
+                        diffs.put(arrayDiffs.get(i));
+                    }
+                } else if (!value1.equals(value2)) {
+                    diff.put("op", "replace");
+                    diff.put("path", thisPath);
+                    diff.put("value", value2);
+                    diffs.put(diff);
+                }
+            }
+        }
+
+        return diffs;
+    }
+
+    public static JSONArray generateJsonArrayDiff(String parentPath, JSONArray array1, JSONArray array2) throws JSONException {
+        JSONArray diffs = new JSONArray();
+
+        int maxLength = Math.max(array1.length(), array2.length());
+
+        for (int i = 0; i < maxLength; i++) {
+            String thisPath = parentPath + "/" + i;
+            JSONObject diff = new JSONObject();
+
+            if (i >= array1.length()) {
+                // Element only in array2 - add operation
+                diff.put("op", "add");
+                diff.put("path", thisPath);
+                diff.put("value", array2.get(i));
+                diffs.put(diff);
+            } else if (i >= array2.length()) {
+                // Element only in array1 - remove operation
+                diff.put("op", "remove");
+                diff.put("path", thisPath);
+                diffs.put(diff);
+            } else {
+                Object value1 = array1.get(i);
+                Object value2 = array2.get(i);
+
+                if (value1 instanceof JSONObject && value2 instanceof JSONObject) {
+                    JSONArray nestedDiffs = generateJsonDiff(thisPath, (JSONObject) value1, (JSONObject) value2);
+                    for (int j = 0; j < nestedDiffs.length(); j++) {
+                        diffs.put(nestedDiffs.get(j));
+                    }
+                } else if (value1 instanceof JSONArray && value2 instanceof JSONArray) {
+                    JSONArray nestedArrayDiffs = generateJsonArrayDiff(thisPath, (JSONArray) value1, (JSONArray) value2);
+                    for (int j = 0; j < nestedArrayDiffs.length(); j++) {
+                        diffs.put(nestedArrayDiffs.get(j));
+                    }
                 } else if (!value1.equals(value2)) {
                     diff.put("op", "replace");
                     diff.put("path", thisPath);
